@@ -9,10 +9,13 @@ from qgis.core import (
     QgsLayoutItemLabel,
     QgsUnitTypes,
     QgsLayoutItemPage,
+    QgsVectorLayer,
 )
 from qgis.utils import iface
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QFont
+from os.path import join
+
 
 MM = QgsUnitTypes.LayoutMillimeters
 
@@ -133,3 +136,14 @@ for item in items:
         qgs_item = create_layout_label(item)
 
     layout.addLayoutItem(qgs_item)
+
+# Add layers.
+iso3 = "COL"
+work_dir = "/Users/jorgemartinez/data/wfp/heatmap_acled"
+
+layer_name = "wld_bnd_adm1_ge"
+global_adm = QgsVectorLayer(join(work_dir, layer_name), layer_name, "ogr")
+global_adm.setSubsetString(f"iso3 != '{iso3}'")
+
+layer_name = "wld_inc_acled"
+acled = QgsVectorLayer(join(work_dir, layer_name), layer_name, "ogr")
