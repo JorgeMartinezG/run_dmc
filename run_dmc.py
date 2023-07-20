@@ -126,12 +126,10 @@ page = layout.pageCollection().pages()[0]
 page.setPageSize(page_size, QgsLayoutItemPage.Orientation.Landscape)
 iface.openLayoutDesigner(layout)
 
-qgs_item = create_layout_shape(items[0])
-layout.addLayoutItem(qgs_item)
-# Create header.
+for item in items:
+    if item["type"] == LayoutItem.SHAPE:
+        qgs_item = create_layout_shape(item)
+    if item["type"] == LayoutItem.LABEL:
+        qgs_item = create_layout_label(item)
 
-title = create_layout_label(items[1])
-layout.addLayoutItem(title)
-
-sub_title = create_layout_label(items[2])
-layout.addLayoutItem(sub_title)
+    layout.addLayoutItem(qgs_item)
