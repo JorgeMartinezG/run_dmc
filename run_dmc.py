@@ -1,3 +1,4 @@
+from enum import Enum
 from qgis.core import (
     QgsProject,
     QgsPrintLayout,
@@ -6,35 +7,112 @@ from qgis.core import (
     QgsLayoutSize,
     QgsFillSymbol,
     QgsLayoutItemLabel,
+    QgsUnitTypes,
+    QgsLayoutItemPage,
 )
+from qgis.utils import iface
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QFont
 
 MM = QgsUnitTypes.LayoutMillimeters
 
-A4_size = (297, 210) # mms
-height, height = A4_size
+sizes = {"A4": (210, 297)}
+page_size = "A4"
 
+height, width = sizes[page_size]
 layout_name = "sample_layout"
+
+global_font_color = QColor(255, 255, 255)
+global_font_type_bold = QFont("Gill Sans", 20, QFont.Bold)
+global_font_type = QFont("Gill Sans", 20)
+
+
+class LayoutItem(Enum):
+    SHAPE = 1
+    LABEL = 2
+
+
+def create_layout_shape(item):
+    qgs_item = QgsLayoutItemShape(layout)
+    qgs_item.setId(item["id"])
+    qgs_item.setShapeType(item["shape_type"])
+
+    symbol = QgsFillSymbol.createSimple(item["props"])
+    qgs_item.setSymbol(symbol)
+
+    x, y = item["position"]
+    qgs_item.attemptMove(QgsLayoutPoint(x, y, MM))
+    width, height = item["size"]
+    qgs_item.attemptResize(QgsLayoutSize(width, height, MM))
+
+    qgs_item.setLocked(True)
+
+    return qgs_item
+
+
+def create_layout_label(item):
+    qgs_item = QgsLayoutItemLabel(layout)
+    qgs_item.setId(item["id"])
+    qgs_item.setText(item["label_text"])
+    qgs_item.setFontColor(item["label_color"])
+    qgs_item.setFont(item["label_font"])
+
+    if "rotation" in item.keys():
+        qgs_item.setItemRotation(item["rotation"])
+
+    x, y = item["position"]
+    qgs_item.attemptMove(QgsLayoutPoint(x, y, MM))
+    width, height = item["size"]
+    qgs_item.attemptResize(QgsLayoutSize(width, height, MM))
+
+    if "alignment" in item.keys():
+        qgs_item.setHAlign(item["alignment"])
+
+    qgs_item.setLocked(True)
+
+    return qgs_item
+
 
 items = [
     {
         "id": "header",
-        "type": QgsLayoutItemShape.Rectangle,
+        "type": LayoutItem.SHAPE,
+        "shape_type": QgsLayoutItemShape.Rectangle,
         "position": (0, 0),
         "size": (20, height),
         "props": {
             "color": "#0A6EB4",
             "outline_width": 0,
-            "outline_color": "transparent"
-        }
-    }
+        },
+    },
+    {
+        "id": "title",
+        "type": LayoutItem.LABEL,
+        "label_text": "COUNTRY_NAME",
+        "label_color": global_font_color,
+        "label_font": global_font_type_bold,
+        "rotation": 270,
+        "position": (2, 210),
+        "size": (205, 10),
+        "alignment": Qt.AlignmentFlag.AlignRight,
+    },
+    {
+        "id": "sub_title",
+        "type": LayoutItem.LABEL,
+        "label_text": "Veni, vidi, vici. I came, I saw, I conquered.",
+        "label_color": global_font_color,
+        "label_font": global_font_type,
+        "rotation": 270,
+        "position": (9, 210),
+        "size": (205, 20),
+        "alignment": Qt.AlignmentFlag.AlignRight,
+    },
 ]
 project = QgsProject.instance()
 manager = project.layoutManager()
 layouts = manager.printLayouts()
 
-# remove the same named layout 
+# remove the same named layout
 for layout in layouts:
     if layout.name() == layout_name:
         layout_manager.removeLayout(layout)
@@ -42,50 +120,18 @@ for layout in layouts:
 ### (1) Initialize a layout
 layout = QgsPrintLayout(project)
 layout.setName(layout_name)
-layout.initializeDefaults() 
+layout.initializeDefaults()
 
 page = layout.pageCollection().pages()[0]
-page.setPageSize('A4', QgsLayoutItemPage.Orientation.Landscape)
+page.setPageSize(page_size, QgsLayoutItemPage.Orientation.Landscape)
 iface.openLayoutDesigner(layout)
 
-item = items[0]
-
-# Create header.
-qgs_item = QgsLayoutItemShape(layout)
-qgs_item.setShapeType(item["type"])
-qgs_item.setId(item["id"])
-symbol = QgsFillSymbol.createSimple(item["props"])
-qgs_item.setSymbol(symbol)
-
-x, y = item["position"]
-qgs_item.attemptMove(QgsLayoutPoint(x, y, MM))
-width, height = item["size"]
-qgs_item.attemptResize(QgsLayoutSize(width, height, MM))
-
+qgs_item = create_layout_shape(items[0])
 layout.addLayoutItem(qgs_item)
+# Create header.
 
-title = QgsLayoutItemLabel(layout)
-title.setText("COUNTRY_NAME")
-title.setFontColor(QColor(255, 255, 255))
-title.setFont(QFont("Gill Sans" , 20 , QFont.Bold))
-title.setItemRotation(270)
-
-title.attemptMove(QgsLayoutPoint(2, 210, MM))
-title.attemptResize(QgsLayoutSize(205, 10, MM))
-title.setHAlign(Qt.AlignmentFlag.AlignRight)
-
+title = create_layout_label(items[1])
 layout.addLayoutItem(title)
 
-sub_title = QgsLayoutItemLabel(layout)
-sub_title.setText("Veni, vidi, vici. I came, I saw, I conquered.")
-sub_title.setFontColor(QColor(255, 255, 255))
-sub_title.setFont(QFont("Gill Sans" , 18))
-sub_title.setItemRotation(270)
-
-sub_title.attemptMove(QgsLayoutPoint(9, 210, MM))
-sub_title.attemptResize(QgsLayoutSize(205, 20, MM))
-sub_title.setHAlign(Qt.AlignmentFlag.AlignRight)
+sub_title = create_layout_label(items[2])
 layout.addLayoutItem(sub_title)
-
-
-
